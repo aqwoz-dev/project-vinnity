@@ -1,0 +1,16 @@
+# Geçici dosyalar
+*.tmp
+
+# Log dosyaları
+*.log
+
+# Derleme dosyaları
+build/
+dist/
+
+# IDE dosyaları
+.idea/
+.vscode/
+
+# Gizli bilgiler
+
