@@ -58,22 +58,12 @@ def show_messages(host='localhost', port=12345):
         logging.error(f"Error connecting to the server: {e}")
         print(f"Error: {e}")
 
-def delete_application():
-    """Uygulamayı sil."""
-    logging.info("Deleting application...")
-    if os.path.isfile(".vinnity"):
-        os.remove(".vinnity")  # Uygulama dosyasını sil
-        logging.info("Application deleted.")
-    else:
-        logging.warning("Application not found.")
-
 def start_client():
     """Müşteri uygulamasını başlat."""
     subprocess.Popen([sys.executable, 'client.py'])
 
 def main():
     parser = argparse.ArgumentParser(description="All commands are there")
-    parser.add_argument("-dlt", "--delete", action='store_true', help="Delete vinnity from your server or personal computer.")
     parser.add_argument("-s", "--server", help="You should use it with a command.")
     parser.add_argument("-o", "--off", action='store_true', help="Turns off the server.")
     parser.add_argument("-O", "--on", action='store_true', help="Turns on the server.")
@@ -82,10 +72,6 @@ def main():
 
     # Argümanları al
     args = parser.parse_args()
-
-    if args.delete:
-        delete_application()
-        return
 
     server_process = None
 
