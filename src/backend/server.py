@@ -5,7 +5,7 @@ import logging
 # Loglama ayarları
 logging.basicConfig(
     filename='server.log',  # Log dosyası
-    level=logging.INFO,  # Log seviyesini belirleme
+    level=logging.INFO,  # Log seviyesi
     format='%(asctime)s - %(message)s'  # Log formatı
 )
 
@@ -24,11 +24,15 @@ class Server(threading.Thread):
         logging.info(f"Server running on {self.host}:{self.port}")
 
         while True:
-            client_socket, client_address = sock.accept()
-            print(f"Connection from {client_address}")
-            logging.info(f"Connection from {client_address}")
-            self.clients.append(client_socket)
-            threading.Thread(target=self.handle_client, args=(client_socket,)).start()
+            try:
+                client_socket, client_address = sock.accept()
+                print(f"Connection from {client_address}")
+                logging.info(f"Connection from {client_address}")
+                self.clients.append(client_socket)
+                threading.Thread(target=self.handle_client, args=(client_socket,)).start()
+            except Exception as e:
+                print(f"An error occurred while accepting a connection: {e}")
+                logging.error(f"An error occurred while accepting a connection: {e}")
 
     def handle_client(self, client_socket):
         while True:
@@ -46,7 +50,8 @@ class Server(threading.Thread):
                 break
 
         client_socket.close()
-        self.clients.remove(client_socket)  # Bağlantıyı kapattıktan sonra istemciyi listeden çıkar
+        if client_socket in self.clients:
+            self.clients.remove(client_socket)
 
     def broadcast(self, message, client_socket):
         for client in self.clients:
@@ -58,5 +63,9 @@ class Server(threading.Thread):
                     logging.error(f"Could not send message to a client: {e}")
 
 if __name__ == "__main__":
-    server = Server("0.0.0.0", 12345)
+    # Host bilgisini otomatik olarak almak için
+    host_ip = socket.gethostbyname(socket.gethostname())
+    port = 12345
+
+    server = Server(host_ip, port)
     server.start()

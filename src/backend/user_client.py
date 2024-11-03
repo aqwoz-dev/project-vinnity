@@ -3,18 +3,18 @@ import socket
 
 class User:
     def __init__(self, user_name):
-        self.username = user_name  # Store the username
-        self.socket = None  # Socket associated with the user
-        self.connected = False  # Connection status of the user with the server
+        self.username = user_name
+        self.socket = None
+        self.connected = False
 
     def connect_to_server(self, server_host, server_port):
         """Create a socket to connect to the server."""
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((server_host, server_port))  # Use the renamed parameter
+            self.socket.connect((server_host, server_port))
             self.connected = True
             print(f"{self.username} connected to the server.")
-            threading.Thread(target=self.receive_messages).start()  # Start a new thread to receive messages
+            threading.Thread(target=self.receive_messages, daemon=True).start()
         except Exception as e:
             print(f"Connection error: {e}")
 
@@ -49,7 +49,7 @@ class User:
 
 if __name__ == "__main__":
     username = input("Enter your username: ")
-    host = input("Enter server address (e.g., localhost): ")
+    host = input("Enter server address (e.g., localhost or IP): ")
     port = int(input("Enter server port (e.g., 12345): "))
 
     user = User(username)

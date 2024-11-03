@@ -7,12 +7,14 @@ import subprocess
 import logging
 import argparse
 import socket
+import user_client
+import server
 
 # Loglama ayarları
 logging.basicConfig(
     filename='vinnity.log',  # Log dosyası
     level=logging.INFO,  # Log seviyesini belirleme
-    format='%(asctime)s - %(message)s'  # Log formatı
+    format='%(asctime)s - %(levelname)s - %(message)s'  # Log formatı
 )
 
 logo = """
@@ -24,19 +26,32 @@ logo = """
                         /____/                            /____/                                 
 """
 
+server_process = None  # Global değişken olarak tanımlandı
+
 def start_server():
     """Sunucuyu başlat."""
-    logging.info("Starting server...")
-    server_process = subprocess.Popen([sys.executable, 'server.py'])
-    return server_process
+    global server_process  # Global değişkeni kullan
+    try:
+        logging.info("Starting server...")
+        server_process = subprocess.Popen([sys.executable, 'server.py'])
+        return server_process
+    except Exception as e:
+        logging.error(f"Failed to start the server: {e}")
+        print(f"Error: {e}")
 
-def stop_server(server_process):
+def stop_server():
     """Sunucuyu durdur."""
+    global server_process  # Global değişkeni kullan
     if server_process:
-        logging.info("Stopping server...")
-        server_process.terminate()
-        server_process.wait()  # Sunucunun durmasını bekle
-        logging.info("Server stopped.")
+        try:
+            logging.info("Stopping server...")
+            server_process.terminate()
+            server_process.wait()  # Sunucunun durmasını bekle
+            logging.info("Server stopped.")
+            server_process = None  # Sunucu durduğunda process'i sıfırla
+        except Exception as e:
+            logging.error(f"Failed to stop the server: {e}")
+            print(f"Error: {e}")
     else:
         logging.warning("No server process to stop.")
 
@@ -58,34 +73,46 @@ def show_messages(host='localhost', port=12345):
         logging.error(f"Error connecting to the server: {e}")
         print(f"Error: {e}")
 
-def start_client():
+def start_client(ip_address, port):
     """Müşteri uygulamasını başlat."""
-    subprocess.Popen([sys.executable, 'user_client.py'])
+    try:
+        subprocess.Popen([sys.executable, 'user_client.py', ip_address, str(port)])
+    except Exception as e:
+        logging.error(f"Failed to start the client: {e}")
+        print(f"Error: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="All commands are there")
-    parser.add_argument("-s", "--server", help="You should use it with a command.")
     parser.add_argument("-o", "--off", action='store_true', help="Turns off the server.")
     parser.add_argument("-O", "--on", action='store_true', help="Turns on the server.")
     parser.add_argument("-m", "--messages", action='store_true', help="Shows messages")
-    parser.add_argument("-js", "--joinserver", help="Join the specified server.")
+    parser.add_argument("-js", "--joinserver", help="Join the specified server in the format 'ip:port'.")
 
     # Argümanları al
     args = parser.parse_args()
 
-    server_process = None
-
     if args.on:
-        server_process = start_server()
+        if not server_process:  # Sunucu zaten çalışmıyorsa başlat
+            start_server()
+        else:
+            logging.warning("Server is already running.")
     elif args.off:
-        stop_server(server_process)
+        stop_server()
     elif args.messages:
         show_messages()  # Mesajları göster
     elif args.joinserver:
-        start_client()  # Başka bir işlem olmadan doğrudan başlat
+        # IP ve portu ayır
+        try:
+            ip, port = args.joinserver.split(':')
+            port = int(port)  # Portu tam sayıya çevir
+            start_client(ip, port)  # IP ve port ile client başlat
+        except ValueError:
+            logging.error("Invalid joinserver format. Use 'ip:port'.")
+            print("Error: Invalid joinserver format. Use 'ip:port'.")
     else:
         print(logo)
         parser.print_help()
 
 if __name__ == "__main__":
     main()
+
