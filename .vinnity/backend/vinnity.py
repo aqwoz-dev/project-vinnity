@@ -1,12 +1,19 @@
-#vinnity.py
-#Management and main file
+#!/usr/bin/env python
+# vinnity.py
+# Management and main file
 import os
 import sys
 import subprocess
-import time
-import server
-import setup
-import argparse as args
+import logging
+import argparse
+import socket
+
+# Loglama ayarları
+logging.basicConfig(
+    filename='vinnity.log',  # Log dosyası
+    level=logging.INFO,  # Log seviyesini belirleme
+    format='%(asctime)s - %(message)s'  # Log formatı
+)
 
 logo = """
  _    ___             _ __           __  ___                                                  __ 
@@ -17,9 +24,82 @@ logo = """
                         /____/                            /____/                                 
 """
 
-parser = args.ArgumentParser(description="All commands is there")
-parser.add_argument("-dlt", "--delete", help="Delete vinnity from your server or personal computer.")
-parser.add_argument("-s", "--server", help="You should use it with an command." )
-parser.add_argument("-o", "--off", help="Turns off the server.")
-parser.add_argument("-O", "--on", help="Turns on the server.")
-parser.add_argument("-m", "--messages", help="Shows messages")
+def start_server():
+    """Sunucuyu başlat."""
+    logging.info("Starting server...")
+    server_process = subprocess.Popen([sys.executable, 'server.py'])
+    return server_process
+
+def stop_server(server_process):
+    """Sunucuyu durdur."""
+    if server_process:
+        logging.info("Stopping server...")
+        server_process.terminate()
+        server_process.wait()  # Sunucunun durmasını bekle
+        logging.info("Server stopped.")
+    else:
+        logging.warning("No server process to stop.")
+
+def show_messages(host='localhost', port=12345):
+    """Sunucudan mesajları göster."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+            client_socket.connect((host, port))
+            logging.info("Connected to the server to fetch messages.")
+
+            while True:
+                message = client_socket.recv(1024).decode('utf-8')
+                if message:
+                    print(f"Message from server: {message}")
+                    logging.info(f"Message from server: {message}")
+                else:
+                    break
+    except Exception as e:
+        logging.error(f"Error connecting to the server: {e}")
+        print(f"Error: {e}")
+
+def delete_application():
+    """Uygulamayı sil."""
+    logging.info("Deleting application...")
+    if os.path.isfile(".vinnity"):
+        os.remove(".vinnity")  # Uygulama dosyasını sil
+        logging.info("Application deleted.")
+    else:
+        logging.warning("Application not found.")
+
+def start_client():
+    """Müşteri uygulamasını başlat."""
+    subprocess.Popen([sys.executable, 'client.py'])
+
+def main():
+    parser = argparse.ArgumentParser(description="All commands are there")
+    parser.add_argument("-dlt", "--delete", action='store_true', help="Delete vinnity from your server or personal computer.")
+    parser.add_argument("-s", "--server", help="You should use it with a command.")
+    parser.add_argument("-o", "--off", action='store_true', help="Turns off the server.")
+    parser.add_argument("-O", "--on", action='store_true', help="Turns on the server.")
+    parser.add_argument("-m", "--messages", action='store_true', help="Shows messages")
+    parser.add_argument("-js", "--joinserver", help="Join the specified server.")
+
+    # Argümanları al
+    args = parser.parse_args()
+
+    if args.delete:
+        delete_application()
+        return
+
+    server_process = None
+
+    if args.on:
+        server_process = start_server()
+    elif args.off:
+        stop_server(server_process)
+    elif args.messages:
+        show_messages()  # Mesajları göster
+    elif args.joinserver:
+        start_client()  # Başka bir işlem olmadan doğrudan başlat
+    else:
+        print(logo)
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

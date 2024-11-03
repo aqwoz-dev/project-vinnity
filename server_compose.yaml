@@ -1,0 +1,13 @@
+# file: server_compose.yaml
+# image: server_app
+version: '3'
+services:
+  app:
+    image: server_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./vinnity:/path/to/copy/vinnity  # 'vinnity' klasörünü hedef dizine kopyalar
+    command: |
+      bash -c "pip install -r requirements.txt && python server.py"  # Gerekli bağımlılıkları yükler ve sunucu programını başlatır
