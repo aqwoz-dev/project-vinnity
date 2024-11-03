@@ -60,7 +60,7 @@ def show_messages(host='localhost', port=12345):
 
 def start_client():
     """Müşteri uygulamasını başlat."""
-    subprocess.Popen([sys.executable, 'client.py'])
+    subprocess.Popen([sys.executable, 'user_client.py'])
 
 def main():
     parser = argparse.ArgumentParser(description="All commands are there")
