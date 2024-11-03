@@ -14,7 +14,7 @@ ___
 ### Linux:
 + ``$ git clone https://github.com/aqwoz-dev/project-vinnity.git``
 #### Then after that run:
-+ ``$ cd project-vinnity && sudo chmod +x setup.sh``
++ ``$ cd project-vinnity && sudo chmod +x setupforlinux.sh``
 ### Windows: 
 Just execute the file with Administator:
 >setupforwindows.bat
