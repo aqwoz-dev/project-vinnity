@@ -1,5 +1,13 @@
 import threading
 import socket
+import logging
+
+# Loglama ayarları
+logging.basicConfig(
+    filename='client.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 class User:
     def __init__(self, user_name):
@@ -14,8 +22,10 @@ class User:
             self.socket.connect((server_host, server_port))
             self.connected = True
             print(f"{self.username} connected to the server.")
+            logging.info(f"{self.username} connected to the server at {server_host}:{server_port}.")
             threading.Thread(target=self.receive_messages, daemon=True).start()
         except Exception as e:
+            logging.error(f"Connection error: {e}")
             print(f"Connection error: {e}")
 
     def send_message(self, message):
@@ -23,8 +33,12 @@ class User:
         if self.connected and self.socket:
             try:
                 self.socket.sendall(f"{self.username}: {message}".encode('utf-8'))
+                logging.info(f"Message sent: {message}")
             except Exception as e:
+                logging.error(f"Error sending message: {e}")
                 print(f"Error sending message: {e}")
+        else:
+            print("You are not connected to the server.")
 
     def receive_messages(self):
         """Thread for receiving messages from the server."""
@@ -32,32 +46,61 @@ class User:
             try:
                 response = self.socket.recv(1024)
                 if response:
-                    print(response.decode('utf-8'))
+                    decoded_response = response.decode('utf-8')
+                    print(decoded_response)
+                    logging.info(f"Message received: {decoded_response}")
                 else:
                     self.connected = False
                     print("Server connection lost.")
+                    logging.warning("Server connection lost.")
             except Exception as e:
+                logging.error(f"Error receiving message: {e}")
                 print(f"Error receiving message: {e}")
                 self.connected = False
 
     def disconnect(self):
         """Disconnect from the server."""
         if self.socket:
-            self.socket.close()
-            self.connected = False
-            print(f"{self.username} disconnected from the server.")
+            try:
+                self.socket.close()
+                logging.info(f"{self.username} disconnected from the server.")
+                print(f"{self.username} disconnected from the server.")
+            except Exception as e:
+                logging.error(f"Error while disconnecting: {e}")
+                print(f"Error while disconnecting: {e}")
+            finally:
+                self.connected = False
 
 if __name__ == "__main__":
-    username = input("Enter your username: ")
-    host = input("Enter server address (e.g., localhost or IP): ")
-    port = int(input("Enter server port (e.g., 12345): "))
+    try:
+        username = input("Enter your username: ").strip()
+        if not username:
+            print("Username cannot be empty.")
+            exit(1)
 
-    user = User(username)
-    user.connect_to_server(host, port)
+        host = input("Enter server address (e.g., localhost or IP): ").strip()
+        if not host:
+            print("Server address cannot be empty.")
+            exit(1)
 
-    while user.connected:
-        message = input("Enter message to send (type 'exit' to quit): ")
-        if message.lower() == 'exit':
+        port_input = input("Enter server port (e.g., 12345): ").strip()
+        try:
+            port = int(port_input)
+        except ValueError:
+            print("Port must be a valid integer.")
+            exit(1)
+
+        user = User(username)
+        user.connect_to_server(host, port)
+
+        while user.connected:
+            message = input("Enter message to send (type 'exit' to quit): ").strip()
+            if message.lower() == 'exit':
+                user.disconnect()
+                break
+            elif message:
+                user.send_message(message)
+    except KeyboardInterrupt:
+        print("\nExiting client. Goodbye!")
+        if user.connected:
             user.disconnect()
-            break
-        user.send_message(message)
