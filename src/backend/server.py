@@ -1,6 +1,7 @@
 import socket
 import threading
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 # Loglama ayarları
 logging.basicConfig(
@@ -9,21 +10,21 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-class Server(threading.Thread):
+class Server:
     def __init__(self, host, port):
-        super().__init__()
         self.host = host
         self.port = port
         self.clients = []
         self.server_socket = None
         self.running = True
+        self.executor = ThreadPoolExecutor(max_workers=10)  # Thread pool for handling clients
 
     def log_error(self, message):
         """Hataları loglamak için yardımcı fonksiyon."""
         print(message)
         logging.error(message)
 
-    def run(self):
+    def start(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
@@ -38,7 +39,7 @@ class Server(threading.Thread):
                     print(f"Connection from {client_address}")
                     logging.info(f"Connection from {client_address}")
                     self.clients.append(client_socket)
-                    threading.Thread(target=self.handle_client, args=(client_socket,)).start()
+                    self.executor.submit(self.handle_client, client_socket)
                 except Exception as e:
                     self.log_error(f"Error while accepting connection: {e}")
         except KeyboardInterrupt:
@@ -46,9 +47,9 @@ class Server(threading.Thread):
             self.shutdown()
 
     def handle_client(self, client_socket):
-        try:
-            while self.running:
-                try:
+        with client_socket:
+            try:
+                while self.running:
                     message = client_socket.recv(1024).decode('utf-8')
                     if message:
                         print(f"Received message: {message}")
@@ -56,11 +57,10 @@ class Server(threading.Thread):
                         self.broadcast(message, client_socket)
                     else:
                         break  # Bağlantı kapandığında döngüyü kır
-                except Exception as e:
-                    self.log_error(f"Error receiving message: {e}")
-                    break
-        finally:
-            self.remove_client(client_socket)
+            except Exception as e:
+                self.log_error(f"Error receiving message: {e}")
+            finally:
+                self.remove_client(client_socket)
 
     def broadcast(self, message, sender_socket):
         for client in self.clients:
@@ -87,10 +87,8 @@ class Server(threading.Thread):
         if self.server_socket:
             self.server_socket.close()
         for client in self.clients:
-            try:
-                client.close()
-            except Exception as e:
-                self.log_error(f"Error closing client socket: {e}")
+            self.remove_client(client)
+        self.executor.shutdown(wait=True)  # Wait for all threads to finish
         print("Server shut down.")
         logging.info("Server shut down.")
 

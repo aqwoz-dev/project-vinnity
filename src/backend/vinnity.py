@@ -25,83 +25,79 @@ logo = r"""
                         /____/                            /____/                                 
 """
 
-server_process = None  # Global değişken olarak tanımlandı
+class ServerManager:
+    def __init__(self):
+        self.server_process = None
 
-def start_server():
-    """Sunucuyu başlat."""
-    global server_process
-    if server_process is not None and server_process.poll() is None:
-        logging.warning("Server is already running.")
-        print("Server is already running.")
-        return server_process
+    def log_and_print(self, message):
+        """Log and print a message."""
+        print(message)
+        logging.info(message)
 
-    try:
-        logging.info("Starting server...")
-        server_process = subprocess.Popen([sys.executable, 'server.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logging.info(f"Server started with PID: {server_process.pid}")
-        print(f"Server started with PID: {server_process.pid}")
-        return server_process
-    except Exception as e:
-        logging.error(f"Failed to start the server: {e}")
-        print(f"Error: {e}")
+    def start_server(self):
+        """Start the server."""
+        if self.server_process is not None and self.server_process.poll() is None:
+            self.log_and_print("Server is already running.")
+            return self.server_process
 
-def stop_server():
-    """Sunucuyu durdur."""
-    global server_process
-    if server_process is not None:
-        if server_process.poll() is None:  # Sürecin hala çalışıp çalışmadığını kontrol et
-            try:
-                logging.info("Stopping server...")
-                server_process.terminate()
-                server_process.wait(timeout=5)
-                logging.info("Server stopped.")
-                print("Server stopped.")
-                server_process = None
-            except subprocess.TimeoutExpired:
-                logging.warning("Server did not stop in time. Forcing termination.")
-                server_process.kill()
-                logging.info("Server process killed.")
-                print("Server process killed.")
-                server_process = None
-            except Exception as e:
-                logging.error(f"Failed to stop the server: {e}")
-                print(f"Error: {e}")
+        try:
+            self.log_and_print("Starting server...")
+            self.server_process = subprocess.Popen(
+                [sys.executable, 'server.py'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            self.log_and_print(f"Server started with PID: {self.server_process.pid}")
+            return self.server_process
+        except Exception as e:
+            self.log_and_print(f"Failed to start the server: {e}")
+
+    def stop_server(self):
+        """Stop the server."""
+        if self.server_process is not None:
+            if self.server_process.poll() is None:  # Check if the process is still running
+                try:
+                    self.log_and_print("Stopping server...")
+                    self.server_process.terminate()
+                    self.server_process.wait(timeout=5)
+                    self.log_and_print("Server stopped.")
+                    self.server_process = None
+                except subprocess.TimeoutExpired:
+                    self.log_and_print("Server did not stop in time. Forcing termination.")
+                    self.server_process.kill()
+                    self.log_and_print("Server process killed.")
+                    self.server_process = None
+                except Exception as e:
+                    self.log_and_print(f"Failed to stop the server: {e}")
+            else:
+                self.log_and_print("Server is already stopped.")
+                self.server_process = None
         else:
-            logging.warning("Server is already stopped.")
-            print("Server is already stopped.")
-            server_process = None
-    else:
-        logging.warning("No server process to stop.")
-        print("No server process to stop.")
+            self.log_and_print("No server process to stop.")
 
-def show_messages(host='localhost', port=12345):
-    """Sunucudan mesajları göster."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-            client_socket.connect((host, port))
-            logging.info("Connected to the server to fetch messages.")
-            print("Connected to the server to fetch messages.")
+    def show_messages(self, host='localhost', port=12345):
+        """Show messages from the server."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+                client_socket.connect((host, port))
+                self.log_and_print("Connected to the server to fetch messages.")
 
-            while True:
-                message = client_socket.recv(1024).decode('utf-8')
-                if message:
-                    print(f"Message from server: {message}")
-                    logging.info(f"Message from server: {message}")
-                else:
-                    break
-    except Exception as e:
-        logging.error(f"Error connecting to the server: {e}")
-        print(f"Error: {e}")
+                while True:
+                    message = client_socket.recv(1024).decode('utf-8')
+                    if message:
+                        self.log_and_print(f"Message from server: {message}")
+                    else:
+                        break
+        except Exception as e:
+            self.log_and_print(f"Error connecting to the server: {e}")
 
-def start_client(ip_address, port):
-    """Müşteri uygulamasını başlat."""
-    try:
-        subprocess.Popen([sys.executable, 'user_client.py', ip_address, str(port)])
-        logging.info(f"Client started for {ip_address}:{port}")
-        print(f"Client started for {ip_address}:{port}")
-    except Exception as e:
-        logging.error(f"Failed to start the client: {e}")
-        print(f"Error: {e}")
+    def start_client(self, ip_address, port):
+        """Start the client application."""
+        try:
+            subprocess.Popen([sys.executable, 'user_client.py', ip_address, str(port)])
+            self.log_and_print(f"Client started for {ip_address}:{port}")
+        except Exception as e:
+            self.log_and_print(f"Failed to start the client: {e}")
 
 def main():
     parser = argparse.ArgumentParser(description="Vinnity Server Management")
@@ -111,21 +107,21 @@ def main():
     parser.add_argument("-js", "--joinserver", help="Join the specified server in the format 'ip:port'.")
 
     args = parser.parse_args()
+    manager = ServerManager()
 
     if args.on:
-        start_server()
+        manager.start_server()
     elif args.off:
-        stop_server()
+        manager.stop_server()
     elif args.messages:
-        show_messages()  # Mesajları göster
+        manager.show_messages()  # Show messages
     elif args.joinserver:
         try:
             ip, port = args.joinserver.split(':')
             port = int(port)
-            start_client(ip, port)
+            manager.start_client(ip, port)
         except ValueError:
-            logging.error("Invalid joinserver format. Use 'ip:port'.")
-            print("Error: Invalid joinserver format. Use 'ip:port'.")
+            manager.log_and_print("Invalid joinserver format. Use 'ip:port'.")
     else:
         print(logo)
         parser.print_help()
